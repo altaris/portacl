@@ -18,11 +18,11 @@ environment variables.
   documentation](https://docker-py.readthedocs.io/en/stable/client.html#creating-a-client).
 * `DOCKER_TLS_VERIFY`: See the [Docker SDK
   documentation](https://docker-py.readthedocs.io/en/stable/client.html#creating-a-client).
+* `LOGGING_LEVEL` (default: `WARNING`): Python logging level, see
+  [here](https://docs.python.org/2/library/logging.html#logging-levels).
 * `PORTAINER_API_PASSWORD`.
 * `PORTAINER_API_USERNAME`.
 * `PORTAINER_API_URL`.
-* `LOGGING_LEVEL` (default: `WARNING`): Python logging level, see
-  [here](https://docs.python.org/2/library/logging.html#logging-levels).
 
 # Labels
 
