@@ -16,29 +16,18 @@ PORTAINER_API_PASSWORD = os.environ.get("PORTAINER_API_PASSWORD", "")
 PORTAINER_API_USERNAME = os.environ.get("PORTAINER_API_USERNAME", "")
 PORTAINER_API_URL = os.environ.get("PORTAINER_API_URL", "")
 
+docker_event_slots = {}
 portainer_teams = {}
 portainer_token = None
 portainer_users = {}
 
 
-def apply_acl(**kwargs):
-    logging.info("Setting acl for container {id} ({name}): {acl}".format(
-        id=kwargs["id"][:12],
-        name=kwargs["name"],
-        acl=str({
-            "io.portainer.uac.public": kwargs["io_portainer_uac_public"],
-            "io.portainer.uac.teams": kwargs["io_portainer_uac_teams"],
-            "io.portainer.uac.users": kwargs["io_portainer_uac_users"]
-        })
-    ))
-    portainer_request("POST", "/resource_controls", {
-        "Public": kwargs["io_portainer_uac_public"],
-        "ResourceID": kwargs["id"],
-        "SubResourceIDs": [],
-        "Teams": kwargs["io_portainer_uac_teams"],
-        "Type": "container",
-        "Users": kwargs["io_portainer_uac_users"]
-    })
+def docker_event_slot(event_type, action):
+    def decorator(slot):
+        global docker_event_slots
+        docker_event_slots[event_type + "_" + action] = slot
+        return slot
+    return decorator
 
 
 def docker_listen():
@@ -46,23 +35,31 @@ def docker_listen():
     docker_client = docker.from_env()
     logging.info("Entering event loop")
     for event in docker_client.events(decode=True):
-        if event.get("Type") == "container" and \
-           event.get("Action") == "create":
-            ac = event.get("Actor")
-            at = ac.get("Attributes")
-            raw_teams = at.get("io.portainer.uac.teams")
-            raw_users = at.get("io.portainer.uac.users")
-            public = (str(at.get("io.portainer.uac.public")).lower() == "true")
+        logging.debug("Received docker event " + str(event))
+        event_type = event.get("Type")
+        action = event.get("Action")
+        slot = docker_event_slots.get(event_type + "_" + action, None)
+        if slot:
+            actor = event.get("Actor")
+            attributes = actor.get("Attributes")
+            raw_teams = attributes.get("io.portainer.uac.teams")
+            raw_users = attributes.get("io.portainer.uac.users")
+            public = (
+                str(attributes.get("io.portainer.uac.public")).lower() ==
+                "true"
+            )
             teams = [] if raw_teams is None else \
                 [portainer_teams[x.strip()] for x in str(raw_teams).split(',')]
             users = [] if raw_users is None else \
                 [portainer_users[x.strip()] for x in str(raw_users).split(',')]
-            apply_acl(
-                id=ac.get("ID", "?" * 12),
+            slot(
+                action=action,
+                id=actor.get("ID", "?" * 12),
                 io_portainer_uac_public=public,
                 io_portainer_uac_teams=teams,
                 io_portainer_uac_users=users,
-                name=at.get("name", "<no_name>")
+                name=attributes.get("name", "<no_name>"),
+                event_type=event_type
             )
 
 
@@ -90,6 +87,33 @@ def load_env():
                   .format(PORTAINER_API_USERNAME))
     logging.debug("PORTAINER_API_URL = \"{}\""
                   .format(PORTAINER_API_URL))
+
+
+# @docker_event_slot("config", "create")
+@docker_event_slot("container", "create")
+@docker_event_slot("secret", "create")
+# @docker_event_slot("service", "create")
+# @docker_event_slot("stack", "create")
+# @docker_event_slot("volume", "create")
+def on_something_create(**kwargs):
+    logging.info("Setting ACL for {type} {id} ({name}): {acl}".format(
+        acl=str({
+            "io.portainer.uac.public": kwargs["io_portainer_uac_public"],
+            "io.portainer.uac.teams": kwargs["io_portainer_uac_teams"],
+            "io.portainer.uac.users": kwargs["io_portainer_uac_users"]
+        }),
+        id=kwargs["id"][:12],
+        name=kwargs["name"],
+        type=kwargs["event_type"]
+    ))
+    portainer_request("POST", "/resource_controls", {
+        "Public": kwargs["io_portainer_uac_public"],
+        "ResourceID": kwargs["id"],
+        "SubResourceIDs": [],
+        "Teams": kwargs["io_portainer_uac_teams"],
+        "Type": kwargs["event_type"],
+        "Users": kwargs["io_portainer_uac_users"]
+    })
 
 
 def portainer_init():

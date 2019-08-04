@@ -1,5 +1,23 @@
 version: '3.5'
 
+networks:
+  network_public:
+    name: "network_public"
+    labels:
+      - "io.portainer.uac.public=true"
+
+volumes:
+  volume_public:
+    labels:
+      - "io.portainer.uac.public=true"
+    name: "volume_public"
+  volume_carol_daniel:
+    name: "volume_carol_daniel"
+  volume_qa:
+    name: "volume_qa"
+  volume_bob_carol:
+    name: "volume_bob_carol"
+
 services:
   container_public:
     command: sleep 3600
@@ -13,24 +31,38 @@ services:
     image: alpine
     labels:
       - "io.portainer.uac.users=admin"
+  container_bob:
+      command: sleep 3600
+      container_name: "container_bob"
+      image: alpine
+      labels:
+        - "io.portainer.uac.users=bob"
+      volumes:
+        - volume_bob_carol:/data
   container_carol:
       command: sleep 3600
       container_name: "container_carol"
       image: alpine
       labels:
         - "io.portainer.uac.users=carol"
+      volumes:
+        - volume_bob_carol:/data
   container_carol_daniel:
     command: sleep 3600
     container_name: "container_carol_daniel"
     image: alpine
     labels:
       - "io.portainer.uac.users=carol,daniel"
+    volumes:
+      - volume_carol_daniel:/data
   container_qa:
     command: sleep 3600
     container_name: "container_qa"
     image: alpine
     labels:
       - "io.portainer.uac.teams=qa"
+    volumes:
+      - volume_qa:/data
   container_development_qa:
     command: sleep 3600
     container_name: "container_development_qa"
