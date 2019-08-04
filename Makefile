@@ -1,11 +1,17 @@
-IMAGE = portacl
-SUDO = sudo
-DOCKER_COMPOSE = docker-compose -f test/test-stack.yml -p portacl-test
+DOCKER_COMPOSE 	= docker-compose -f test/test-stack.yml -p portacl-test
+IMAGE 			= portacl
+SUDO 			= sudo
 
 all: build
 
 build:
 	$(SUDO) docker build -t $(IMAGE):$$(git rev-parse --abbrev-ref HEAD) .
+
+.ONESHELL:
+run:
+	. venv/bin/activate
+	export $$(cat test/test.env | xargs)
+	$(SUDO) --preserve-env $$(which python) portacl.py
 
 test-portainer-down:
 	$(SUDO) docker container rm --force portacl-test
@@ -23,9 +29,3 @@ test-stack-down:
 
 test-stack-up:
 	$(SUDO) $(DOCKER_COMPOSE) up
-
-.ONESHELL:
-run:
-	. venv/bin/activate
-	export $$(cat test/test.env | xargs)
-	$(SUDO) --preserve-env $$(which python) portacl.py
