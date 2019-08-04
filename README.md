@@ -40,7 +40,7 @@ github](https://github.com/portainer/portainer/issues/1257#issuecomment-41422195
 # Start test portainer instance
 make test-portainer-up
 # Start portacl (run this on a dedicated terminal)
-make run
+make run  # or make run-docker to run in dockerized environment
 # Start test stack (press Ctrl+C to exit)
 make test-stack-up
 # Cleanup
