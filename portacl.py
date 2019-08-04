@@ -16,20 +16,24 @@ portainer_token = None
 portainer_users = {}
 
 
-def apply_acl(acl, metadata):
-    """
-    Example acl:
-    {
-        "io.portainer.uac.public": false,
-        "io.portainer.uac.teams": [1, 2, 3],
-        "io.portainer.uac.users": [4, 5]
-    }
-    """
+def apply_acl(**kwargs):
     logging.info("Setting acl for container {id} ({name}): {acl}".format(
-        id=metadata["id"][:12],
-        name=metadata["name"],
-        acl=str(acl)
+        id=kwargs["id"][:12],
+        name=kwargs["name"],
+        acl=str({
+            "io.portainer.uac.public": kwargs["io_portainer_uac_public"],
+            "io.portainer.uac.teams": kwargs["io_portainer_uac_teams"],
+            "io.portainer.uac.users": kwargs["io_portainer_uac_users"]
+        })
     ))
+    portainer_request("POST", "/resource_controls", {
+        "Public": kwargs["io_portainer_uac_public"],
+        "ResourceID": kwargs["id"],
+        "SubResourceIDs": [],
+        "Teams": kwargs["io_portainer_uac_teams"],
+        "Type": "container",
+        "Users": kwargs["io_portainer_uac_users"]
+    })
 
 
 def docker_listen():
@@ -47,14 +51,13 @@ def docker_listen():
                 [portainer_teams[x.strip()] for x in str(raw_teams).split(',')]
             users = [] if raw_users is None else \
                 [portainer_users[x.strip()] for x in str(raw_users).split(',')]
-            apply_acl({
-                "io.portainer.uac.public": public,
-                "io.portainer.uac.teams": teams,
-                "io.portainer.uac.users": users
-            }, {
-                "id": ac.get("ID", "?" * 12),
-                "name": at.get("name", "<no_name>")
-            })
+            apply_acl(
+                id=ac.get("ID", "?" * 12),
+                io_portainer_uac_public=public,
+                io_portainer_uac_teams=teams,
+                io_portainer_uac_users=users,
+                name=at.get("name", "<no_name>")
+            )
 
 
 def load_env():
@@ -107,7 +110,7 @@ def portainer_init():
 
 
 def portainer_request(method, url, json={}):
-    logging.debug(method + ": " + str(json))
+    logging.debug(url + " " + method + " " + str(json))
     f = {
         "DELETE": requests.delete,
         "GET": requests.get,

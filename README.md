@@ -33,3 +33,13 @@ github](https://github.com/portainer/portainer/issues/1257#issuecomment-41422195
   identified by name (which is assume to not start by a digit) or an id.
 * `io.portainer.uac.users`: Comma separated list of authorized users,
   identified by name (which is assume to not start by a digit) or an id.
+
+# Testing
+
+```sh
+# Requires a valid secret.env file, see secret.env.example
+make run
+# On a separate terminal
+make create-dummy-containers
+make remove-dummy-containers
+```
