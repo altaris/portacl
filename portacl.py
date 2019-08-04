@@ -95,13 +95,11 @@ def load_env():
 def portainer_init():
     logging.info("Authenticating to portainer api {}"
                  .format(PORTAINER_API_URL))
-    r = requests.post(PORTAINER_API_URL + "/auth", json={
+    global portainer_token
+    portainer_token = portainer_request("POST", "/auth", {
         "Password": PORTAINER_API_PASSWORD,
         "Username": PORTAINER_API_USERNAME
-    })
-    r.raise_for_status()
-    global portainer_token
-    portainer_token = r.json()["jwt"]
+    })["jwt"]
     for user in portainer_request("GET", "/users"):
         portainer_users[user["Username"]] = int(user["Id"])
         portainer_users[str(user["Id"])] = int(user["Id"])
@@ -120,9 +118,10 @@ def portainer_request(method, url, json={}):
         "POST": requests.post,
         "PUT": requests.put
     }[method]
-    r = f(PORTAINER_API_URL + url, json=json, headers={
+    authorization_header = {
         "Authorization": "Bearer " + portainer_token
-    })
+    } if portainer_token is not None else None
+    r = f(PORTAINER_API_URL + url, json=json, headers=authorization_header)
     r.raise_for_status()
     return r.json()
 
