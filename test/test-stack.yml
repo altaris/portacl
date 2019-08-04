@@ -1,0 +1,46 @@
+version: '3.5'
+
+services:
+  container_public:
+    command: sleep 3600
+    container_name: "container_public"
+    image: alpine
+    labels:
+      - "io.portainer.uac.public=true"
+  container_admin:
+    command: sleep 3600
+    container_name: "container_admin"
+    image: alpine
+    labels:
+      - "io.portainer.uac.users=admin"
+  container_carol:
+      command: sleep 3600
+      container_name: "container_carol"
+      image: alpine
+      labels:
+        - "io.portainer.uac.users=carol"
+  container_carol_daniel:
+    command: sleep 3600
+    container_name: "container_carol_daniel"
+    image: alpine
+    labels:
+      - "io.portainer.uac.users=carol,daniel"
+  container_qa:
+    command: sleep 3600
+    container_name: "container_qa"
+    image: alpine
+    labels:
+      - "io.portainer.uac.teams=qa"
+  container_development_qa:
+    command: sleep 3600
+    container_name: "container_development_qa"
+    image: alpine
+    labels:
+      - "io.portainer.uac.teams=development,qa"
+  container_qa_bob:
+    command: sleep 3600
+    container_name: "container_qa_bob"
+    image: alpine
+    labels:
+      - "io.portainer.uac.teams=qa"
+      - "io.portainer.uac.users=bob"

@@ -37,9 +37,28 @@ github](https://github.com/portainer/portainer/issues/1257#issuecomment-41422195
 # Testing
 
 ```sh
-# Requires a valid secret.env file, see secret.env.example
+# Start test portainer instance
+make test-portainer-up
+# Start portacl (run this on a dedicated terminal)
 make run
-# On a separate terminal
-make create-dummy-containers
-make remove-dummy-containers
+# Start test stack (press Ctrl+C to exit)
+make test-stack-up
+# Cleanup
+make test-stack-down
+make test-portainer-down
 ```
+
+## The test portainer instance
+
+| User     | Id | Password   |
+|----------|----|------------|
+| `admin`  | 1  | `password` |
+| `bob`    | 2  | `password` |
+| `carol`  | 3  | `password` |
+| `daniel` | 4  | `password` |
+
+| Team          | Id | Members            |
+|---------------|----|--------------------|
+| `development` | 1  | `bob` & `carol`    |
+| `qa`          | 2  | `carol`            |
+| `production`  | 3  | `carol` & `daniel` |
