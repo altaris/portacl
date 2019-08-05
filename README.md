@@ -1,16 +1,26 @@
 portacl
 =======
 
+[![Docker Build Status](https://img.shields.io/docker/build/altaris/docker-texlive.svg)](https://hub.docker.com/r/altaris/docker-texlive/)
+![Python 3](https://badgen.net/badge/Python/3/blue)
+[![MIT License](https://badgen.net/badge/license/MIT/blue)](https://choosealicense.com/licenses/mit/)
+
 Updates [portainer](https://www.portainer.io/) ACLs from container labels.
 
 # Usage
 
 ```sh
-./portacl.py
+docker run --detach                                       \
+    --env "DOCKER_HOST=unix://var/run/docker.sock"        \
+    --env "PORTAINER_API_PASSWORD=password"               \
+    --env "PORTAINER_API_URL=http://localhost:9000/api"   \
+    --env "PORTAINER_API_USERNAME=admin"                  \
+    --network host                                        \
+    --volume /var/run/docker.sock:/var/run/docker.sock:ro \
+    altaris/portacl
 ```
 
-The script does not take command line arguments, but reads the following
-environment variables.
+## Environment variables
 
 * `DOCKER_CERT_PATH`: See the [Docker SDK
   documentation](https://docker-py.readthedocs.io/en/stable/client.html#creating-a-client).
