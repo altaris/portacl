@@ -12,21 +12,23 @@ PORTAINER_API_PASSWORD = ""
 PORTAINER_API_USERNAME = ""
 PORTAINER_API_URL = ""
 
+docker_client = None
 docker_event_slots = {}
 
 
 def docker_event_slot(event_type, action):
     """Decorator for docker slot.
 
-    A docker slot is a function that is decorated by this decorator. Is is
-    registered in the docker_event_slot dictionary, and looked up in
-    docker_listen upon receiving a docker event. See
+    A docker slot is a function that takes a docker event (in dict form) as
+    argument, and is decorated by this decorator. It is registered in the
+    docker_event_slot dictionary, and looked up in docker_listen upon receiving
+    a docker event. See
     https://docs.docker.com/engine/reference/commandline/events/.
 
     For example:
 
     @docker_event_slot("container", "create")
-    def my_docker_slot(**kwargs):
+    def my_docker_slot(event):
         ...
 
     function my_docker_slot will be called whenever a container create event is
@@ -59,36 +61,14 @@ def docker_listen():
     Raises:
         docker.errors.APIError: If the docker server returned an error.
     """
-    logging.info("Connecting to docker host {}".format(DOCKER_HOST))
-    docker_client = docker.from_env()
     logging.info("Entering event loop")
     for event in docker_client.events(decode=True):
-        logging.debug("Received docker event " + str(event))
         event_type = event.get("Type")
         action = event.get("Action")
         slot = docker_event_slots.get(event_type + "_" + action, None)
         if slot:
-            actor = event.get("Actor")
-            attributes = actor.get("Attributes")
-            raw_teams = attributes.get("io.portainer.uac.teams")
-            raw_users = attributes.get("io.portainer.uac.users")
-            public = (
-                str(attributes.get("io.portainer.uac.public")).lower() ==
-                "true"
-            )
-            teams = [] if raw_teams is None else \
-                [team_id(x.strip()) for x in str(raw_teams).split(',')]
-            users = [] if raw_users is None else \
-                [user_id(x.strip()) for x in str(raw_users).split(',')]
-            slot(
-                action=action,
-                id=actor.get("ID", "?" * 12),
-                io_portainer_uac_public=public,
-                io_portainer_uac_teams=teams,
-                io_portainer_uac_users=users,
-                name=attributes.get("name", "<no_name>"),
-                event_type=event_type
-            )
+            logging.debug("Received supported docker event " + str(event))
+            slot(event)
 
 
 def load_env():
@@ -96,7 +76,7 @@ def load_env():
     def import_env_var(name, default=""):
         globals()[name] = os.environ.get(name, default)
     import_env_var("DOCKER_CERT_PATH")
-    import_env_var("DOCKER_HOST", "unix://var/run/docker.sock")
+    import_env_var("DOCKER_HOST", "unix:///var/run/docker.sock")
     import_env_var("DOCKER_TLS_VERIFY")
     import_env_var("LOGGING_LEVEL", "WARNING")
     import_env_var("PORTAINER_API_PASSWORD")
@@ -116,6 +96,9 @@ def main():
             "INFO": logging.INFO,
             "WARNING": logging.WARNING
         }[LOGGING_LEVEL])
+    logging.info("Connecting to docker host {}".format(DOCKER_HOST))
+    global docker_client
+    docker_client = docker.from_env()
     docker_listen()
 
 
@@ -124,30 +107,18 @@ def main():
 # @docker_event_slot("secret", "create")
 # @docker_event_slot("service", "create")
 # @docker_event_slot("stack", "create")
-# @docker_event_slot("volume", "create")
-def on_something_create(**kwargs):
-    """Slot called when something is created.
-
-    Currently only supports container creations.
+def on_container_create(event):
+    """Slot called when a container is created.
     """
-    logging.info("Setting ACL for {type} {id} ({name}): {acl}".format(
-        acl=str({
-            "io.portainer.uac.public": kwargs["io_portainer_uac_public"],
-            "io.portainer.uac.teams": kwargs["io_portainer_uac_teams"],
-            "io.portainer.uac.users": kwargs["io_portainer_uac_users"]
-        }),
-        id=kwargs["id"][:12],
-        name=kwargs["name"],
-        type=kwargs["event_type"]
-    ))
-    portainer_request("POST", "/resource_controls", {
-        "Public": kwargs["io_portainer_uac_public"],
-        "ResourceID": kwargs["id"],
-        "SubResourceIDs": [],
-        "Teams": kwargs["io_portainer_uac_teams"],
-        "Type": kwargs["event_type"],
-        "Users": kwargs["io_portainer_uac_users"]
-    })
+    actor = event.get("Actor")
+    attributes = actor.get("Attributes")
+    portainer_set_uac(
+        public=attributes.get("io.portainer.uac.public", ""),
+        ressource_id=actor["ID"],
+        ressource_type="container",
+        teams=attributes.get("io.portainer.uac.teams", ""),
+        users=attributes.get("io.portainer.uac.users", "")
+    )
 
 
 @static_var("token", None)
@@ -204,6 +175,38 @@ def portainer_request(method, url, json={}):
             raise e
 
 
+def portainer_set_uac(**kwargs):
+    """Updates the uac of a docker ressource.
+
+    Args:
+        public (str): Raw value of label io.portainer.uac.public.
+        ressource_id (int): Docker ressource id.
+        ressource_type (str): Docker ressource type (container, volume, etc.).
+        subressource_ids (List[int]): Docker subressource ids.
+        teams (str): Raw value of label io.portainer.uac.teams.
+        users (str): Raw value of label io.portainer.uac.users.
+    """
+    ressource_id = kwargs.get("ressource_id")
+    ressource_type = kwargs.get("ressource_type")
+    if ressource_id is None:
+        raise ValueError("UAC must specify a docker ressource id.")
+    elif ressource_type is None:
+        raise ValueError("UAC must specify a docker ressource type.")
+    public = (kwargs.get("public").lower() == "true")
+    teams = [] if kwargs.get("teams") in [None, ""] else \
+        [team_id(x.strip()) for x in str(kwargs.get("teams")).split(',')]
+    users = [] if kwargs.get("users") in [None, ""] else \
+        [user_id(x.strip()) for x in str(kwargs.get("users")).split(',')]
+    portainer_request("POST", "/resource_controls", {
+        "Public": public,
+        "ResourceID": ressource_id,
+        "SubResourceIDs": kwargs.get("subressource_ids", []),
+        "Teams": teams,
+        "Type": ressource_type,
+        "Users": users
+    })
+
+
 @static_var("teams", {})
 def team_id(name):
     """Gets the id of a team.
@@ -211,6 +214,9 @@ def team_id(name):
     Teamnames are assumed not to start with a digit. If a valid team id is
     passed in string format, then that id is returned (this simplifies some
     code).
+
+    Returns:
+        Id of the team as an int.
     """
     if name not in team_id.teams:
         for team in portainer_request("GET", "/teams"):
@@ -228,6 +234,9 @@ def user_id(name):
     Usernames are assumed not to start with a digit. If a valid user id is
     passed in string format, then that id is returned (this simplifies some
     code).
+
+    Returns:
+        Id of the user as an int.
     """
     if name not in user_id.users:
         for user in portainer_request("GET", "/users"):

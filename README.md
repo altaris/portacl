@@ -23,7 +23,7 @@ docker run --detach                                       \
 
 * `DOCKER_CERT_PATH`: See the [Docker SDK
   documentation](https://docker-py.readthedocs.io/en/stable/client.html#creating-a-client).
-* `DOCKER_HOST` (default: `unix://var/run/docker.sock`): See the [Docker SDK
+* `DOCKER_HOST` (default: `unix:///var/run/docker.sock`): See the [Docker SDK
   documentation](https://docker-py.readthedocs.io/en/stable/client.html#creating-a-client).
 * `DOCKER_TLS_VERIFY`: See the [Docker SDK
   documentation](https://docker-py.readthedocs.io/en/stable/client.html#creating-a-client).
