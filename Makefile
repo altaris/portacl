@@ -1,6 +1,11 @@
-DOCKER_COMPOSE 	= docker-compose -f test/test-stack.yml -p portacl-test-stack
-IMAGE 			= portacl
-SUDO 			= sudo
+DOCKER_COMPOSE 	 = docker-compose -f test/test-stack.yml -p portacl-test-stack
+IMAGE 			 = portacl
+SUDO 			?= sudo
+
+LOGGING_LEVEL			?= DEBUG
+PORTAINER_API_PASSWORD	?= password
+PORTAINER_API_URL		?= http://localhost:9000/api
+PORTAINER_API_USERNAME	?= admin
 
 all: build
 
@@ -12,10 +17,10 @@ clean: test-stack-down test-portainer-down
 .ONESHELL:
 run:
 	. venv/bin/activate
-	export LOGGING_LEVEL=DEBUG
-	export PORTAINER_API_PASSWORD=password
-	export PORTAINER_API_URL=http://localhost:9000/api
-	export PORTAINER_API_USERNAME=admin
+	export LOGGING_LEVEL="$(LOGGING_LEVEL)"
+	export PORTAINER_API_PASSWORD="$(PORTAINER_API_PASSWORD)"
+	export PORTAINER_API_URL="$(PORTAINER_API_URL)"
+	export PORTAINER_API_USERNAME="$(PORTAINER_API_USERNAME)"
 	$(SUDO) --preserve-env $$(which python) portacl.py
 
 run-docker: build

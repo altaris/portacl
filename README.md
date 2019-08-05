@@ -51,14 +51,25 @@ github](https://github.com/portainer/portainer/issues/1257#issuecomment-41422195
 
 # Testing
 
+1. Start the portainer test instance:
 ```sh
-# Start test portainer instance
 make test-portainer-up
-# Start portacl (run this on a dedicated terminal)
-make run  # or make run-docker to run in dockerized environment
-# Start test stack (press Ctrl+C to exit)
+```
+2. Start portacl:
+```sh
+# a) direct mode (run this on a dedicated terminal)
+make run
+#    you can also set environment variables, e.g.
+LOGGING_LEVEL=WARNING make run
+# b) dockerized mode
+make run-docker
+```
+3. Start the test stack (press Ctrl+C to exit):
+```sh
 make test-stack-up
-# Cleanup
+```
+4. Cleanup after yourself:
+```sh
 make test-stack-down
 make test-portainer-down
 ```
