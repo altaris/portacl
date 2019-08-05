@@ -2,14 +2,15 @@ import docker
 import logging
 import os
 import requests
+import sys
 
-DOCKER_CERT_PATH = os.environ.get("DOCKER_CERT_PATH", "")
-DOCKER_HOST = os.environ.get("DOCKER_HOST", "unix://var/run/docker.sock")
-DOCKER_TLS_VERIFY = os.environ.get("DOCKER_TLS_VERIFY", "")
-LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "WARNING")
-PORTAINER_API_PASSWORD = os.environ.get("PORTAINER_API_PASSWORD", "")
-PORTAINER_API_USERNAME = os.environ.get("PORTAINER_API_USERNAME", "")
-PORTAINER_API_URL = os.environ.get("PORTAINER_API_URL", "")
+DOCKER_CERT_PATH = ""
+DOCKER_HOST = ""
+DOCKER_TLS_VERIFY = ""
+LOGGING_LEVEL = ""
+PORTAINER_API_PASSWORD = ""
+PORTAINER_API_USERNAME = ""
+PORTAINER_API_URL = ""
 
 docker_event_slots = {}
 portainer_teams = {}
@@ -84,6 +85,20 @@ def docker_listen():
 
 def load_env():
     """Reads relevent environment variables."""
+    def import_env_var(name, default=""):
+        globals()[name] = os.environ.get(name, default)
+    import_env_var("DOCKER_CERT_PATH")
+    import_env_var("DOCKER_HOST", "unix://var/run/docker.sock")
+    import_env_var("DOCKER_TLS_VERIFY")
+    import_env_var("LOGGING_LEVEL", "WARNING")
+    import_env_var("PORTAINER_API_PASSWORD")
+    import_env_var("PORTAINER_API_USERNAME")
+    import_env_var("PORTAINER_API_URL")
+
+
+def main():
+    """The main function."""
+    load_env()
     logging.basicConfig(
         format='%(asctime)s [%(levelname)s] %(message)s',
         level={
@@ -93,25 +108,6 @@ def load_env():
             "INFO": logging.INFO,
             "WARNING": logging.WARNING
         }[LOGGING_LEVEL])
-    logging.debug("DOCKER_CERT_PATH = \"{}\""
-                  .format(DOCKER_CERT_PATH))
-    logging.debug("DOCKER_HOST = \"{}\""
-                  .format(DOCKER_HOST))
-    logging.debug("DOCKER_TLS_VERIFY = \"{}\""
-                  .format(DOCKER_TLS_VERIFY))
-    logging.debug("LOGGING_LEVEL = \"{}\""
-                  .format(LOGGING_LEVEL))
-    logging.debug("PORTAINER_API_PASSWORD = \"{}\""
-                  .format(PORTAINER_API_PASSWORD))
-    logging.debug("PORTAINER_API_USERNAME = \"{}\""
-                  .format(PORTAINER_API_USERNAME))
-    logging.debug("PORTAINER_API_URL = \"{}\""
-                  .format(PORTAINER_API_URL))
-
-
-def main():
-    """The main function."""
-    load_env()
     portainer_init()
     docker_listen()
 
