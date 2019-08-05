@@ -47,8 +47,6 @@ github](https://github.com/portainer/portainer/issues/1257#issuecomment-41422195
 
 * Presently, only container ACLs are supported.
 * portacl does not manage ACLs of ressources created before it has started.
-* portacl does not handle errors well (or at all). If any API call fails, the
-  whole script crashes.
 
 # Testing
 

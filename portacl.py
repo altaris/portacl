@@ -102,11 +102,7 @@ def main():
     docker_listen()
 
 
-# @docker_event_slot("config", "create")
 @docker_event_slot("container", "create")
-# @docker_event_slot("secret", "create")
-# @docker_event_slot("service", "create")
-# @docker_event_slot("stack", "create")
 def on_container_create(event):
     """Slot called when a container is created.
     """
@@ -197,14 +193,24 @@ def portainer_set_uac(**kwargs):
         [team_id(x.strip()) for x in str(kwargs.get("teams")).split(',')]
     users = [] if kwargs.get("users") in [None, ""] else \
         [user_id(x.strip()) for x in str(kwargs.get("users")).split(',')]
-    portainer_request("POST", "/resource_controls", {
-        "Public": public,
-        "ResourceID": ressource_id,
-        "SubResourceIDs": kwargs.get("subressource_ids", []),
-        "Teams": teams,
-        "Type": ressource_type,
-        "Users": users
-    })
+    if not public and len(teams) == 0 and len(users) == 0:
+        logging.warning(f'Empty UAC for ressource {ressource_id}, skipping')
+    else:
+        try:
+            portainer_request("DELETE", "/resource_controls/" + ressource_id)
+        except requests.HTTPError:
+            pass
+        try:
+            portainer_request("POST", "/resource_controls", {
+                "Public": public,
+                "ResourceID": ressource_id,
+                "SubResourceIDs": kwargs.get("subressource_ids", []),
+                "Teams": teams,
+                "Type": ressource_type,
+                "Users": users
+            })
+        except requests.HTTPError as e:
+            logging.error("Portainer API request failed: " + str(e))
 
 
 @static_var("teams", {})
