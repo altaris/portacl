@@ -11,7 +11,6 @@ Updates [portainer](https://www.portainer.io/) ACLs from container labels.
 
 ```sh
 docker run --detach                                       \
-    --env "DOCKER_HOST=unix://var/run/docker.sock"        \
     --env "PORTAINER_API_PASSWORD=password"               \
     --env "PORTAINER_API_URL=http://localhost:9000/api"   \
     --env "PORTAINER_API_USERNAME=admin"                  \
@@ -24,7 +23,7 @@ docker run --detach                                       \
 
 * `DOCKER_CERT_PATH`: See the [Docker SDK
   documentation](https://docker-py.readthedocs.io/en/stable/client.html#creating-a-client).
-* `DOCKER_HOST`: See the [Docker SDK
+* `DOCKER_HOST` (default: `unix://var/run/docker.sock`): See the [Docker SDK
   documentation](https://docker-py.readthedocs.io/en/stable/client.html#creating-a-client).
 * `DOCKER_TLS_VERIFY`: See the [Docker SDK
   documentation](https://docker-py.readthedocs.io/en/stable/client.html#creating-a-client).

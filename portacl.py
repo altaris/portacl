@@ -4,7 +4,7 @@ import os
 import requests
 
 DOCKER_CERT_PATH = os.environ.get("DOCKER_CERT_PATH", "")
-DOCKER_HOST = os.environ.get("DOCKER_HOST", "")
+DOCKER_HOST = os.environ.get("DOCKER_HOST", "unix://var/run/docker.sock")
 DOCKER_TLS_VERIFY = os.environ.get("DOCKER_TLS_VERIFY", "")
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "WARNING")
 PORTAINER_API_PASSWORD = os.environ.get("PORTAINER_API_PASSWORD", "")
