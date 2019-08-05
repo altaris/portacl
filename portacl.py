@@ -13,9 +13,6 @@ PORTAINER_API_USERNAME = ""
 PORTAINER_API_URL = ""
 
 docker_event_slots = {}
-portainer_teams = {}
-portainer_token = None
-portainer_users = {}
 
 
 def docker_event_slot(event_type, action):
@@ -39,6 +36,17 @@ def docker_event_slot(event_type, action):
         global docker_event_slots
         docker_event_slots[event_type + "_" + action] = slot
         return slot
+    return decorator
+
+
+def static_var(variable_name, initial_value):
+    """Decorator that assigns a static variable to the decorated function.
+
+    Credits: Claudiu https://stackoverflow.com/questions/279561/what-is-the-python-equivalent-of-static-variables-inside-a-function
+    """
+    def decorator(func):
+        setattr(func, variable_name, initial_value)
+        return func
     return decorator
 
 
@@ -108,7 +116,6 @@ def main():
             "INFO": logging.INFO,
             "WARNING": logging.WARNING
         }[LOGGING_LEVEL])
-    portainer_init()
     docker_listen()
 
 
@@ -143,24 +150,12 @@ def on_something_create(**kwargs):
     })
 
 
-def portainer_init():
-    """Connects to the portainer API and stores relevant data.
-
-    TODO: Load user and team data each time they are needed.
-    """
-    logging.info("Authenticating to portainer api {}"
-                 .format(PORTAINER_API_URL))
-    global portainer_token
-    portainer_token = portainer_request("POST", "/auth", {
-        "Password": PORTAINER_API_PASSWORD,
-        "Username": PORTAINER_API_USERNAME
-    })["jwt"]
-
-
+@static_var("token", None)
 def portainer_request(method, url, json={}):
     """Issues an API request to the portainer endpoint.
 
-    This is just a convenient wrapper. Portainer API reference:
+    (Re)authenticates if necessary. This is just a convenient wrapper.
+    Portainer API reference:
     https://app.swaggerhub.com/apis/deviantony/Portainer/1.22.0/
 
     Args:
@@ -174,21 +169,42 @@ def portainer_request(method, url, json={}):
     Raises:
         requests.HTTPError: If an error occured.
     """
-    logging.debug(url + " " + method + " " + str(json))
-    f = {
-        "DELETE": requests.delete,
-        "GET": requests.get,
-        "POST": requests.post,
-        "PUT": requests.put
-    }[method]
-    authorization_header = {
-        "Authorization": "Bearer " + portainer_token
-    } if portainer_token is not None else None
-    r = f(PORTAINER_API_URL + url, json=json, headers=authorization_header)
-    r.raise_for_status()
-    return r.json()
+    def authenticate():
+        logging.info("Authenticating to portainer api {}"
+                     .format(PORTAINER_API_URL))
+        r = requests.post(PORTAINER_API_URL + "/auth", json={
+            "Password": PORTAINER_API_PASSWORD,
+            "Username": PORTAINER_API_USERNAME
+        })
+        r.raise_for_status()
+        portainer_request.token = r.json()["jwt"]
+
+    def issue_request():
+        logging.debug(url + " " + method + " " + str(json))
+        f = {
+            "DELETE": requests.delete,
+            "GET": requests.get,
+            "POST": requests.post,
+            "PUT": requests.put
+        }[method]
+        authorization_header = {
+            "Authorization": "Bearer " + portainer_request.token
+        } if portainer_request.token is not None else None
+        r = f(PORTAINER_API_URL + url, json=json, headers=authorization_header)
+        r.raise_for_status()
+        return r.json()
+
+    try:
+        return issue_request()
+    except requests.HTTPError as e:
+        if e.response.status_code == 401:
+            authenticate()
+            return issue_request()
+        else:
+            raise e
 
 
+@static_var("teams", {})
 def team_id(name):
     """Gets the id of a team.
 
@@ -196,15 +212,16 @@ def team_id(name):
     passed in string format, then that id is returned (this simplifies some
     code).
     """
-    if name not in portainer_teams:
+    if name not in team_id.teams:
         for team in portainer_request("GET", "/teams"):
-            portainer_teams[team["Name"]] = int(team["Id"])
-            portainer_teams[str(team["Id"])] = int(team["Id"])
-    if name not in portainer_teams:
+            team_id.teams[team["Name"]] = int(team["Id"])
+            team_id.teams[str(team["Id"])] = int(team["Id"])
+    if name not in team_id.teams:
         raise ValueError(f'Team "{name}" not known by portainer')
-    return portainer_teams[name]
+    return team_id.teams[name]
 
 
+@static_var("users", {})
 def user_id(name):
     """Gets the id of a user.
 
@@ -212,13 +229,13 @@ def user_id(name):
     passed in string format, then that id is returned (this simplifies some
     code).
     """
-    if name not in portainer_users:
+    if name not in user_id.users:
         for user in portainer_request("GET", "/users"):
-            portainer_users[user["Username"]] = int(user["Id"])
-            portainer_users[str(user["Id"])] = int(user["Id"])
-    if name not in portainer_users:
+            user_id.users[user["Username"]] = int(user["Id"])
+            user_id.users[str(user["Id"])] = int(user["Id"])
+    if name not in user_id.users:
         raise ValueError(f'User "{name}" not known by portainer')
-    return portainer_users[name]
+    return user_id.users[name]
 
 
 if __name__ == "__main__":
