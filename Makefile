@@ -7,6 +7,8 @@ all: build
 build:
 	$(SUDO) docker build -t $(IMAGE):$$(git rev-parse --abbrev-ref HEAD) .
 
+clean: test-stack-down test-portainer-down
+
 .ONESHELL:
 run:
 	. venv/bin/activate
