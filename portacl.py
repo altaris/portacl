@@ -1,8 +1,3 @@
-"""
-Portainer API reference:
-https://app.swaggerhub.com/apis/deviantony/Portainer/1.22.0/
-"""
-
 import docker
 import logging
 import os
@@ -23,6 +18,22 @@ portainer_users = {}
 
 
 def docker_event_slot(event_type, action):
+    """Decorator for docker slot.
+
+    A docker slot is a function that is decorated by this decorator. Is is
+    registered in the docker_event_slot dictionary, and looked up in
+    docker_listen upon receiving a docker event. See
+    https://docs.docker.com/engine/reference/commandline/events/.
+
+    For example:
+
+    @docker_event_slot("container", "create")
+    def my_docker_slot(**kwargs):
+        ...
+
+    function my_docker_slot will be called whenever a container create event is
+    received.
+    """
     def decorator(slot):
         global docker_event_slots
         docker_event_slots[event_type + "_" + action] = slot
@@ -31,6 +42,14 @@ def docker_event_slot(event_type, action):
 
 
 def docker_listen():
+    """Main loop.
+
+    This function listen for docker events indefinitely, and calls docker slots
+    registered using the docker_event_slot decorator.
+
+    Raises:
+        docker.errors.APIError: If the docker server returned an error.
+    """
     logging.info("Connecting to docker host {}".format(DOCKER_HOST))
     docker_client = docker.from_env()
     logging.info("Entering event loop")
@@ -64,6 +83,7 @@ def docker_listen():
 
 
 def load_env():
+    """Reads relevent environment variables."""
     logging.basicConfig(
         format='%(asctime)s [%(levelname)s] %(message)s',
         level={
@@ -89,13 +109,24 @@ def load_env():
                   .format(PORTAINER_API_URL))
 
 
+def main():
+    """The main function."""
+    load_env()
+    portainer_init()
+    docker_listen()
+
+
 # @docker_event_slot("config", "create")
 @docker_event_slot("container", "create")
-@docker_event_slot("secret", "create")
+# @docker_event_slot("secret", "create")
 # @docker_event_slot("service", "create")
 # @docker_event_slot("stack", "create")
 # @docker_event_slot("volume", "create")
 def on_something_create(**kwargs):
+    """Slot called when something is created.
+
+    Currently only supports container creations.
+    """
     logging.info("Setting ACL for {type} {id} ({name}): {acl}".format(
         acl=str({
             "io.portainer.uac.public": kwargs["io_portainer_uac_public"],
@@ -117,6 +148,10 @@ def on_something_create(**kwargs):
 
 
 def portainer_init():
+    """Connects to the portainer API and stores relevant data.
+
+    TODO: Load user and team data each time they are needed.
+    """
     logging.info("Authenticating to portainer api {}"
                  .format(PORTAINER_API_URL))
     global portainer_token
@@ -135,6 +170,22 @@ def portainer_init():
 
 
 def portainer_request(method, url, json={}):
+    """Issues an API request to the portainer endpoint.
+
+    This is just a convenient wrapper. Portainer API reference:
+    https://app.swaggerhub.com/apis/deviantony/Portainer/1.22.0/
+
+    Args:
+        method: Either "DELETE", "GET", "POST", or "PUT".
+        url: The API method to call, e.g. "/auth".
+        json: The JSON data as a dict.
+
+    Returns:
+        The JSON response as a dict.
+
+    Raises:
+        requests.HTTPError: If an error occured.
+    """
     logging.debug(url + " " + method + " " + str(json))
     f = {
         "DELETE": requests.delete,
@@ -151,6 +202,4 @@ def portainer_request(method, url, json={}):
 
 
 if __name__ == "__main__":
-    load_env()
-    portainer_init()
-    docker_listen()
+    main()
