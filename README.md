@@ -39,9 +39,19 @@ Based on [this portainer issue on
 github](https://github.com/portainer/portainer/issues/1257#issuecomment-414221956):
 * `io.portainer.uac.public` (default: `false`).
 * `io.portainer.uac.teams`: Comma separated list of authorized teams,
-  identified by name (which is assume to not start by a digit) or an id.
+  identified by name (which is assumes not to start with a digit) or an id.
 * `io.portainer.uac.users`: Comma separated list of authorized users,
-  identified by name (which is assume to not start by a digit) or an id.
+  identified by name (which is assumes not to start with a digit) or an id.
+
+# Known issues :sweat_smile:
+
+* Presently, only container ACLs are supported.
+* portacl does not manage ACLs of ressources created before it has started.
+* User and team data are loaded on startup, and never refreshed. If you create
+  a new user or team after portacl started, and then a supported docker
+  ressource that references it, something bad happens.
+* portacl does not handle errors well (or at all). If any API call fails, the
+  whole script crashes.
 
 # Testing
 
