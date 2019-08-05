@@ -160,7 +160,6 @@ def portainer_request(method, url, json={}):
         portainer_request.token = r.json()["jwt"]
 
     def issue_request():
-        logging.debug(url + " " + method + " " + str(json))
         f = {
             "DELETE": requests.delete,
             "GET": requests.get,
