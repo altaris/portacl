@@ -45,8 +45,9 @@ github](https://github.com/portainer/portainer/issues/1257#issuecomment-41422195
 
 # Known issues :sweat_smile:
 
-* Presently, only container ACLs are supported.
 * portacl does not manage ACLs of ressources created before it has started.
+* API requests setting a volume as piublic always fail. This seems to be a
+  portainer limitation or issue.
 
 # Testing
 

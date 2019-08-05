@@ -117,6 +117,19 @@ def on_container_create(event):
     )
 
 
+@docker_event_slot("volume", "create")
+def on_volume_create(event):
+    volume = docker_client.volumes.get(event.get("Actor").get("ID"))
+    labels = volume.attrs.get("Labels", {})
+    portainer_set_uac(
+        public=labels.get("io.portainer.uac.public", ""),
+        ressource_id=volume.id,
+        ressource_type="volume",
+        teams=labels.get("io.portainer.uac.teams", ""),
+        users=labels.get("io.portainer.uac.users", "")
+    )
+
+
 @static_var("token", None)
 def portainer_request(method, url, json={}):
     """Issues an API request to the portainer endpoint.
