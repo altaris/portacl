@@ -47,9 +47,6 @@ github](https://github.com/portainer/portainer/issues/1257#issuecomment-41422195
 
 * Presently, only container ACLs are supported.
 * portacl does not manage ACLs of ressources created before it has started.
-* User and team data are loaded on startup, and never refreshed. If you create
-  a new user or team after portacl started, and then a supported docker
-  ressource that references it, something bad happens.
 * portacl does not handle errors well (or at all). If any API call fails, the
   whole script crashes.
 

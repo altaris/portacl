@@ -69,9 +69,9 @@ def docker_listen():
                 "true"
             )
             teams = [] if raw_teams is None else \
-                [portainer_teams[x.strip()] for x in str(raw_teams).split(',')]
+                [team_id(x.strip()) for x in str(raw_teams).split(',')]
             users = [] if raw_users is None else \
-                [portainer_users[x.strip()] for x in str(raw_users).split(',')]
+                [user_id(x.strip()) for x in str(raw_users).split(',')]
             slot(
                 action=action,
                 id=actor.get("ID", "?" * 12),
@@ -155,14 +155,6 @@ def portainer_init():
         "Password": PORTAINER_API_PASSWORD,
         "Username": PORTAINER_API_USERNAME
     })["jwt"]
-    for user in portainer_request("GET", "/users"):
-        portainer_users[user["Username"]] = int(user["Id"])
-        portainer_users[str(user["Id"])] = int(user["Id"])
-    logging.debug("Portainer users: " + str(portainer_users))
-    for team in portainer_request("GET", "/teams"):
-        portainer_teams[team["Name"]] = int(team["Id"])
-        portainer_teams[str(team["Id"])] = int(team["Id"])
-    logging.debug("Portainer teams: " + str(portainer_teams))
 
 
 def portainer_request(method, url, json={}):
@@ -195,6 +187,38 @@ def portainer_request(method, url, json={}):
     r = f(PORTAINER_API_URL + url, json=json, headers=authorization_header)
     r.raise_for_status()
     return r.json()
+
+
+def team_id(name):
+    """Gets the id of a team.
+
+    Teamnames are assumed not to start with a digit. If a valid team id is
+    passed in string format, then that id is returned (this simplifies some
+    code).
+    """
+    if name not in portainer_teams:
+        for team in portainer_request("GET", "/teams"):
+            portainer_teams[team["Name"]] = int(team["Id"])
+            portainer_teams[str(team["Id"])] = int(team["Id"])
+    if name not in portainer_teams:
+        raise ValueError(f'Team "{name}" not known by portainer')
+    return portainer_teams[name]
+
+
+def user_id(name):
+    """Gets the id of a user.
+
+    Usernames are assumed not to start with a digit. If a valid user id is
+    passed in string format, then that id is returned (this simplifies some
+    code).
+    """
+    if name not in portainer_users:
+        for user in portainer_request("GET", "/users"):
+            portainer_users[user["Username"]] = int(user["Id"])
+            portainer_users[str(user["Id"])] = int(user["Id"])
+    if name not in portainer_users:
+        raise ValueError(f'User "{name}" not known by portainer')
+    return portainer_users[name]
 
 
 if __name__ == "__main__":
