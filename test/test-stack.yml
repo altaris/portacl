@@ -18,11 +18,6 @@ volumes:
   volume_bob_carol:
     name: "volume_bob_carol"
 
-secrets:
-  secret_bob:
-    file: ./test.env
-    name: "secret_bob"
-
 services:
   container_public:
     command: sleep 3600
@@ -44,8 +39,6 @@ services:
         - "io.portainer.uac.users=bob"
       volumes:
         - volume_bob_carol:/data
-      secrets:
-        - secret_bob
   container_carol:
       command: sleep 3600
       container_name: "container_carol"
