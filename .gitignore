@@ -1,6 +1,3 @@
-# Secrets
-secret.env
-
 # VSCode
 *.code-workspace
 .vscode/
