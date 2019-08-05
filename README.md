@@ -43,11 +43,25 @@ github](https://github.com/portainer/portainer/issues/1257#issuecomment-41422195
 * `io.portainer.uac.users`: Comma separated list of authorized users,
   identified by name (which is assumes not to start with a digit) or an id.
 
+# Supported events
+
+`portacl` will create, update, or delete ACLs upon receiving docker events.
+Here is a list of supported and soon (:tm:) to be supported events.
+- [x] `container_create`
+- [ ] `container_exec_create`
+- [x] `volume_create`
+- [ ] `volume_mount`
+- [ ] `volume_unmount`
+- [ ] `service_create`
+- [ ] `service_update`
+- [ ] `secret_create`
+
 # Known issues :sweat_smile:
 
 * portacl does not manage ACLs of ressources created before it has started.
 * API requests setting a volume as piublic always fail. This seems to be a
-  portainer limitation or issue.
+  portainer issue.
+* This list should probably be repo issues instead of in the readme.
 
 # Testing
 
