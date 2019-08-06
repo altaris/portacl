@@ -282,6 +282,9 @@ def portainer_update_acl(**kwargs):
                 new_public
             portainer_acls[ressource_id]["io.portainer.uac.teams"] = new_teams
             portainer_acls[ressource_id]["io.portainer.uac.users"] = new_users
+            logging.info(
+                f'Updated ACL for ressource {ressource_id} ({ressource_type}).'
+            )
         except requests.HTTPError as e:
             logging.error(
                 f'Could not update ACL of {ressource_id}: {str(e)}')
@@ -302,6 +305,9 @@ def portainer_update_acl(**kwargs):
                 "ressource_control_id": r["Id"],
                 "subressource_ids": subressource_ids
             }
+            logging.info(
+                f'Created ACL for ressource {ressource_id} ({ressource_type}).'
+            )
         except requests.HTTPError as e:
             logging.error(
                 f'Could not create new ACL for {ressource_id}: {str(e)}')
