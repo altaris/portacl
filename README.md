@@ -50,7 +50,8 @@ Here is a list of supported and soon (:tm:) to be supported events.
 - [x] `container_create`
 - [ ] `container_exec_create`
 - [x] `volume_create`
-- [ ] `volume_mount`
+- [ ] `volume_mount`: WIP. For the time being, please set adequate ACLs to
+  volume shared among multiple containers.
 - [ ] `volume_unmount`
 - [ ] `service_create`
 - [ ] `service_update`

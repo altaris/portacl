@@ -12,7 +12,7 @@ PORTAINER_API_PASSWORD = ""
 PORTAINER_API_USERNAME = ""
 PORTAINER_API_URL = ""
 
-docker_acls = {}
+portainer_acls = {}
 docker_client = None
 docker_event_slots = {}
 
@@ -121,7 +121,6 @@ def on_container_create(event):
 @docker_event_slot("volume", "create")
 def on_volume_create(event):
     volume = docker_client.volumes.get(event.get("Actor").get("ID"))
-    print(volume.attrs)
     labels = volume.attrs.get("Labels")
     if labels is None:
         labels = {}
@@ -134,7 +133,7 @@ def on_volume_create(event):
     )
 
 
-@docker_event_slot("volume", "mount")
+# @docker_event_slot("volume", "mount")
 def on_volume_mount(event):
     """This slot is called when a volume is mounted to a container.
 
@@ -145,14 +144,13 @@ def on_volume_mount(event):
     """
     volume_id = event["Actor"]["ID"]
     container_id = event["Actor"]["Attributes"]["container"]
-    container_labels = docker_client.containers.get(container_id).labels
-    container_public = container_labels.get("io.portainer.uac.public")
-    container_teams = container_labels.get("io.portainer.uac.teams")
-    container_users = container_labels.get("io.portainer.uac.users")
+    container_acl = portainer_acls.get(container_id, {})
+    container_public = container_acl.get("io.portainer.uac.public", False)
+    container_teams = container_acl.get("io.portainer.uac.teams", [])
+    container_users = container_acl.get("io.portainer.uac.users", [])
     portainer_update_acl(
         public=container_public,
         ressource_id=volume_id,
-        ressource_type="volume",
         teams=container_teams,
         users=container_users
     )
@@ -225,92 +223,88 @@ def portainer_update_acl(**kwargs):
       ACL mandates it.
 
     Args:
-        public (str): Raw value of label io.portainer.uac.public.
+        public (str / bool): Raw value of label io.portainer.uac.public.
         ressource_id (int): Docker ressource id.
         ressource_type (str): Docker ressource type (container, volume, etc.).
         subressource_ids (List[int]): Docker subressource ids.
-        teams (str): Raw value of label io.portainer.uac.teams.
-        users (str): Raw value of label io.portainer.uac.users.
+        teams (str / Table[int]): Raw or formatted value of label
+                                  io.portainer.uac.teams.
+        users (str / Table[int]): Raw or formatted value of label
+                                  io.portainer.uac.users.
     """
-    global docker_acls
+    global portainer_acls
     ressource_id = kwargs.get("ressource_id")
     if ressource_id is None:
         raise ValueError("ACL must specify a docker ressource id.")
-    public = (str(kwargs.get("public")).lower() == "true")
     ressource_type = kwargs.get("ressource_type")
     subressource_ids = kwargs.get("subressource_ids", [])
-    teams = [] if kwargs.get("teams") in [None, ""] else \
-        [team_id(x.strip()) for x in str(kwargs.get("teams")).split(',')]
-    users = [] if kwargs.get("users") in [None, ""] else \
-        [user_id(x.strip()) for x in str(kwargs.get("users")).split(',')]
-    if not public \
-       and len(subressource_ids) == 0 \
-       and len(teams) == 0 \
+    raw_public = kwargs.get("public")
+    raw_teams = kwargs.get("teams")
+    raw_users = kwargs.get("users")
+    public = raw_public if type(raw_public) is bool else \
+        (str(kwargs.get("public")).lower() == "true")
+    teams = raw_teams if type(raw_teams) is list else \
+        [] if raw_teams in [None, ""] else \
+        [team_id(x.strip()) for x in str(raw_teams).split(',')]
+    users = raw_users if type(raw_users) is list else \
+        [] if raw_users in [None, ""] else \
+        [user_id(x.strip()) for x in str(raw_users).split(',')]
+    if not public and len(subressource_ids) == 0 and len(teams) == 0 \
        and len(users) == 0:
         logging.warning(f'ACL for ressource {ressource_id} is empty, skipping')
-    else:
-        logging.debug(
-            f'Updating ACL of ressource {ressource_id} ({ressource_type}):'
-            f'io.portainer.uac.public |= {public}, '
-            # f'io.portainer.subressources += {subressource_ids}, '
-            f'io.portainer.uac.teams += {teams}, '
-            f'io.portainer.uac.users += {users}'
-        )
-        if ressource_id in docker_acls or \
-           ressource_type == "volume":  # Volumes ACL seem to always exist...
-            current_public = docker_acls.get("io.portainer.uac.public", False)
-            # current_subressource_ids = \
-            #     docker_acls.get("io.portainer.subressources", [])
-            current_teams = docker_acls.get("io.portainer.uac.teams", [])
-            current_users = docker_acls.get("io.portainer.uac.users", [])
-            new_public = (current_public or public)
-            # new_subressource_ids = list(set(
-            #     current_subressource_ids + subressource_ids))
-            new_teams = list(set(current_teams + teams))
-            new_users = list(set(current_users + users))
-            try:
-                portainer_request(
-                    "PUT",
-                    "/resource_controls/" + ressource_id,
-                    {
-                        "Public": new_public,
-                        # "SubResourceIDs": new_subressource_ids,
-                        "Teams": new_teams,
-                        "Users": new_users
-                    })
-            except requests.HTTPError as e:
-                logging.error(
-                    f'Could not update ACL of {ressource_id}: {str(e)}')
-            docker_acls[ressource_id] = {
-                "io.portainer.uac.public": new_public,
-                # "io.portainer.subressources": new_subressource_ids,
-                "io.portainer.uac.teams": new_teams,
-                "io.portainer.uac.users": new_users
-            }
-        else:
-            try:
-                portainer_request(
-                    "DELETE", "/resource_controls/" + ressource_id)
-            except requests.HTTPError:
-                pass
-            try:
-                portainer_request("POST", "/resource_controls", {
-                    "Public": public,
-                    "ResourceID": ressource_id,
-                    "SubResourceIDs": subressource_ids,
-                    "Teams": teams,
-                    "Type": ressource_type,
-                    "Users": users
+        return
+    logging.debug(
+        f'Updating ACL of ressource {ressource_id} ({ressource_type}):'
+        f'io.portainer.uac.public |= {public}, '
+        f'subressource_ids += {subressource_ids}, '
+        f'io.portainer.uac.teams += {teams}, '
+        f'io.portainer.uac.users += {users}'
+    )
+    if ressource_id in portainer_acls:
+        ressource_control_id = \
+            portainer_acls[ressource_id]["ressource_control_id"]
+        current_public = portainer_acls.get("io.portainer.uac.public", False)
+        current_teams = portainer_acls.get("io.portainer.uac.teams", [])
+        current_users = portainer_acls.get("io.portainer.uac.users", [])
+        new_public = (current_public or public)
+        new_teams = list(set(current_teams + teams))
+        new_users = list(set(current_users + users))
+        try:
+            portainer_request(
+                "PUT",
+                "/resource_controls/" + str(ressource_control_id),
+                {
+                    "Public": new_public,
+                    "Teams": new_teams,
+                    "Users": new_users
                 })
-            except requests.HTTPError as e:
-                logging.error(
-                    f'Could not create new ACL for {ressource_id}: {str(e)}')
-            docker_acls[ressource_id] = {
+            portainer_acls[ressource_id]["io.portainer.uac.public"] = \
+                new_public
+            portainer_acls[ressource_id]["io.portainer.uac.teams"] = new_teams
+            portainer_acls[ressource_id]["io.portainer.uac.users"] = new_users
+        except requests.HTTPError as e:
+            logging.error(
+                f'Could not update ACL of {ressource_id}: {str(e)}')
+    else:
+        try:
+            r = portainer_request("POST", "/resource_controls", {
+                "Public": public,
+                "ResourceID": ressource_id,
+                "SubResourceIDs": subressource_ids,
+                "Teams": teams,
+                "Type": ressource_type,
+                "Users": users
+            })
+            portainer_acls[ressource_id] = {
                 "io.portainer.uac.public": public,
-                "io.portainer.subressources": subressource_ids,
                 "io.portainer.uac.teams": teams,
-                "io.portainer.uac.users": users
+                "io.portainer.uac.users": users,
+                "ressource_control_id": r["Id"],
+                "subressource_ids": subressource_ids
             }
+        except requests.HTTPError as e:
+            logging.error(
+                f'Could not create new ACL for {ressource_id}: {str(e)}')
 
 
 @static_var("teams", {})
