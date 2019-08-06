@@ -11,51 +11,52 @@ sudo docker run --detach                                \
 
 sleep 2
 
-TOKEN=$(
-    curl -s -H "Accept:application/json" -X POST 		\
-    -d '{"Username": "admin", "Password": "password"}' 	\
-    http://localhost:9000/api/auth | jq -r .jwt
-)
+# shellcheck disable=SC1091
+. "$(cd "$(dirname "$0")" && pwd)/test-portainer-connect.sh"
 
-_new_user() {
-    curl -s -X POST http://localhost:9000/api/users                          \
-        -H "Accept:application/json"                                         \
-        -H "Authorization: Bearer $TOKEN"                                    \
-        -d "{\"Username\": \"$1\", \"Password\": \"password\", \"Role\": 2}" \
+portainer_new_user() {
+    portainer_api_call "POST" "/users"                                    \
+        "{\"Username\": \"$1\", \"Password\": \"password\", \"Role\": 2}" \
         > /dev/null
 }
 
-_new_team() {
-    curl -s -X POST http://localhost:9000/api/teams  \
-        -H "Accept:application/json"                 \
-        -H "Authorization: Bearer $TOKEN"            \
-        -d "{\"Name\": \"$1\"}"                      \
+portainer_new_team() {
+    portainer_api_call "POST" "/teams"  \
+        "{\"Name\": \"$1\"}"            \
         > /dev/null
 }
 
-_add_user_to_team() {
-    curl -s -X POST http://localhost:9000/api/team_memberships \
-        -H "Accept:application/json"                           \
-        -H "Authorization: Bearer $TOKEN"                      \
-        -d "{\"UserID\": $1, \"TeamID\": $2, \"Role\": 2}"     \
+portainer_add_user_to_team() {
+    portainer_api_call "POST" "/team_memberships"       \
+        "{\"UserID\": $1, \"TeamID\": $2, \"Role\": 2}" \
+        > /dev/null
+}
+
+portainer_add_local_endpoint() {
+    curl -s -X "POST" "$PORTAINER_API/endpoints"    \
+        -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        -F "Name=\"local\"" -F "EndpointType=1"     \
         > /dev/null
 }
 
 echo "Adding users"
-_new_user "bob"
-_new_user "carol"
-_new_user "daniel"
+portainer_new_user "bob"
+portainer_new_user "carol"
+portainer_new_user "daniel"
 
 echo "Adding teams"
-_new_team "development"
-_new_team "qa"
-_new_team "production"
+portainer_new_team "development"
+portainer_new_team "qa"
+portainer_new_team "production"
 
 echo "Adding users to teams"
-_add_user_to_team 2 1
-_add_user_to_team 3 1
-_add_user_to_team 3 2
-_add_user_to_team 3 3
-_add_user_to_team 4 3
+portainer_add_user_to_team 2 1
+portainer_add_user_to_team 3 1
+portainer_add_user_to_team 3 2
+portainer_add_user_to_team 3 3
+portainer_add_user_to_team 4 3
+
+echo "Adding local endpoint"
+portainer_add_local_endpoint
 
 echo "Done"

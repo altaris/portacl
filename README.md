@@ -90,6 +90,8 @@ make test-portainer-down
 
 ## The test portainer instance
 
+The users and teams are as follows:
+
 | User     | Id | Password   |
 |----------|----|------------|
 | `admin`  | 1  | `password` |
@@ -102,6 +104,13 @@ make test-portainer-down
 | `development` | 1  | `bob` & `carol`    |
 | `qa`          | 2  | `carol`            |
 | `production`  | 3  | `carol` & `daniel` |
+
+To make API calls to the test portainer instance:
+```sh
+. ./test/test-portainer-connect.sh
+portainer_api_call "METHOD" "PATH" "JSON_ARGUMENTS_IF_NEEDED"
+portainer_api_call "GET" "/users" | jq
+```
 
 # References
 
