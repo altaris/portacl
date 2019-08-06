@@ -50,7 +50,7 @@ Here is a list of supported and soon (:tm:) to be supported events.
 - [x] `container_create`
 - [ ] `container_exec_create`
 - [x] `volume_create`
-- [x] `volume_mount`
+- [ ] `volume_mount`
 - [ ] `volume_unmount`
 - [ ] `service_create`
 - [ ] `service_update`
@@ -102,3 +102,8 @@ make test-portainer-down
 | `development` | 1  | `bob` & `carol`    |
 | `qa`          | 2  | `carol`            |
 | `production`  | 3  | `carol` & `daniel` |
+
+# References
+
+* [Portainer API](https://app.swaggerhub.com/apis/deviantony/Portainer/1.22.0/)
+* [Docker API](https://docs.docker.com/engine/api/v1.30/)
