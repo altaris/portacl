@@ -40,6 +40,9 @@ test-portainer-down:
 test-portainer-up:
 	@./test/test-portainer-up.sh
 
+test-stack-create:
+	$(SUDO) $(DOCKER_COMPOSE) create
+
 test-stack-down:
 	$(SUDO) $(DOCKER_COMPOSE) down -v
 

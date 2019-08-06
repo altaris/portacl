@@ -50,7 +50,7 @@ Here is a list of supported and soon (:tm:) to be supported events.
 - [x] `container_create`
 - [ ] `container_exec_create`
 - [x] `volume_create`
-- [ ] `volume_mount`
+- [x] `volume_mount`
 - [ ] `volume_unmount`
 - [ ] `service_create`
 - [ ] `service_update`
