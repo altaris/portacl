@@ -108,7 +108,7 @@ def on_container_create(event):
     """
     actor = event.get("Actor")
     attributes = actor.get("Attributes")
-    portainer_set_uac(
+    portainer_update_acl(
         public=attributes.get("io.portainer.uac.public", ""),
         ressource_id=actor["ID"],
         ressource_type="container",
@@ -121,7 +121,7 @@ def on_container_create(event):
 def on_volume_create(event):
     volume = docker_client.volumes.get(event.get("Actor").get("ID"))
     labels = volume.attrs.get("Labels", {})
-    portainer_set_uac(
+    portainer_update_acl(
         public=labels.get("io.portainer.uac.public", ""),
         ressource_id=volume.id,
         ressource_type="volume",
@@ -183,9 +183,9 @@ def portainer_request(method, url, json={}):
             raise e
 
 
-@static_var("uac", {})
-def portainer_set_uac(**kwargs):
-    """Updates the uac of a docker ressource.
+@static_var("acls", {})
+def portainer_update_acl(**kwargs):
+    """Updates the acl of a docker ressource.
 
     Args:
         public (str): Raw value of label io.portainer.uac.public.
@@ -210,12 +210,13 @@ def portainer_set_uac(**kwargs):
     if not public and len(teams) == 0 and len(users) == 0:
         logging.warning(f'ACL for ressource {ressource_id} is empty, skipping')
     else:
-        if ressource_id in portainer_set_uac.uac:
-            current_public = portainer_set_uac.uac["io.portainer.uac.public"]
+        if ressource_id in portainer_update_acl.acls:
+            current_acl = portainer_update_acl.acls
+            current_public = current_acl["io.portainer.uac.public"]
             current_subressource_ids = \
-                portainer_set_uac.uac["io.portainer.subressources"]
-            current_teams = portainer_set_uac.uac["io.portainer.uac.teams"]
-            current_users = portainer_set_uac.uac["io.portainer.uac.users"]
+                current_acl["io.portainer.subressources"]
+            current_teams = current_acl["io.portainer.uac.teams"]
+            current_users = current_acl["io.portainer.uac.users"]
             new_public = current_public or public
             new_subressource_ids = list(set(
                 current_subressource_ids + subressource_ids))
@@ -231,7 +232,7 @@ def portainer_set_uac(**kwargs):
                         "Teams": new_teams,
                         "Users": new_users
                     })
-                portainer_set_uac.uac[ressource_id] = {
+                portainer_update_acl.acls[ressource_id] = {
                     "io.portainer.uac.public": new_public,
                     "io.portainer.subressources": new_subressource_ids,
                     "io.portainer.uac.teams": new_teams,
@@ -255,7 +256,7 @@ def portainer_set_uac(**kwargs):
                     "Type": ressource_type,
                     "Users": users
                 })
-                portainer_set_uac.uac[ressource_id] = {
+                portainer_update_acl.acls[ressource_id] = {
                     "io.portainer.uac.public": public,
                     "io.portainer.subressources": subressource_ids,
                     "io.portainer.uac.teams": teams,
