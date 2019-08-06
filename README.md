@@ -1,7 +1,7 @@
 portacl
 =======
 
-[![Docker Build Status](https://img.shields.io/docker/build/altaris/docker-texlive.svg)](https://hub.docker.com/r/altaris/docker-texlive/)
+[![Docker Build Status](https://img.shields.io/docker/cloud/build/altaris/portacl)](https://hub.docker.com/r/altaris/portacl/)
 ![Python 3](https://badgen.net/badge/Python/3/blue)
 [![MIT License](https://badgen.net/badge/license/MIT/blue)](https://choosealicense.com/licenses/mit/)
 
