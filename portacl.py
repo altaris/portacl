@@ -166,7 +166,7 @@ def portainer_request(method, url, json={}):
 
     Args:
         method: Either "DELETE", "GET", "POST", or "PUT".
-        url: The API method to call, e.g. "/auth".
+        url: The API method to call.
         json: The JSON data as a dict.
 
     Returns:
@@ -175,40 +175,28 @@ def portainer_request(method, url, json={}):
     Raises:
         requests.HTTPError: If an error occured.
     """
-    def authenticate():
+    if portainer_request.token is None:
         logging.info("Authenticating to portainer api {}"
                      .format(PORTAINER_API_URL))
-        r = requests.post(PORTAINER_API_URL + "/auth", json={
+        auth_r = requests.post(PORTAINER_API_URL + "/auth", json={
             "Password": PORTAINER_API_PASSWORD,
             "Username": PORTAINER_API_USERNAME
         })
-        r.raise_for_status()
-        portainer_request.token = r.json()["jwt"]
-
-    def issue_request():
-        logging.debug(PORTAINER_API_URL + url + " " + method + ": " +
-                      str(json))
-        f = {
-            "DELETE": requests.delete,
-            "GET": requests.get,
-            "POST": requests.post,
-            "PUT": requests.put
-        }[method]
-        authorization_header = {
-            "Authorization": "Bearer " + portainer_request.token
-        } if portainer_request.token is not None else None
-        r = f(PORTAINER_API_URL + url, json=json, headers=authorization_header)
-        r.raise_for_status()
-        return r.json()
-
-    try:
-        return issue_request()
-    except requests.HTTPError as e:
-        if e.response.status_code == 401:
-            authenticate()
-            return issue_request()
-        else:
-            raise e
+        auth_r.raise_for_status()
+        portainer_request.token = auth_r.json()["jwt"]
+    logging.debug(PORTAINER_API_URL + url + " " + method + ": " + str(json))
+    f = {
+        "DELETE": requests.delete,
+        "GET": requests.get,
+        "POST": requests.post,
+        "PUT": requests.put
+    }[method]
+    authorization_header = {
+        "Authorization": "Bearer " + portainer_request.token
+    } if portainer_request.token is not None else None
+    r = f(PORTAINER_API_URL + url, json=json, headers=authorization_header)
+    r.raise_for_status()
+    return r.json()
 
 
 def portainer_update_acl(**kwargs):
