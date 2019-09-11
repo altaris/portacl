@@ -1,8 +1,12 @@
-import docker
+"""Main (and only) module.
+"""
+
 import logging
 import os
 import requests
-import sys
+
+import docker
+
 
 DOCKER_CERT_PATH = ""
 DOCKER_HOST = ""
@@ -12,9 +16,10 @@ PORTAINER_API_PASSWORD = ""
 PORTAINER_API_USERNAME = ""
 PORTAINER_API_URL = ""
 
-portainer_acls = {}
-docker_client = None
-docker_event_slots = {}
+
+PORTAINER_ACLS = {}
+DOCKER_CLIENT = None
+DOCKER_EVENT_SLOTS = {}
 
 
 def docker_event_slot(event_type, action):
@@ -36,13 +41,14 @@ def docker_event_slot(event_type, action):
     received.
     """
     def decorator(slot):
-        global docker_event_slots
-        docker_event_slots[event_type + "_" + action] = slot
+        global DOCKER_EVENT_SLOTS  # pylint: disable=global-statement
+        DOCKER_EVENT_SLOTS[event_type + "_" + action] = slot
         return slot
     return decorator
 
 
 def static_var(variable_name, initial_value):
+    # pylint: disable=line-too-long
     """Decorator that assigns a static variable to the decorated function.
 
     Credits: Claudiu https://stackoverflow.com/questions/279561/what-is-the-python-equivalent-of-static-variables-inside-a-function
@@ -63,12 +69,12 @@ def docker_listen():
         docker.errors.APIError: If the docker server returned an error.
     """
     logging.info("Entering event loop")
-    for event in docker_client.events(decode=True):
+    for event in DOCKER_CLIENT.events(decode=True):
         event_type = event.get("Type")
         action = event.get("Action")
-        slot = docker_event_slots.get(event_type + "_" + action, None)
+        slot = DOCKER_EVENT_SLOTS.get(event_type + "_" + action, None)
         if slot:
-            logging.debug("Received supported docker event " + str(event))
+            logging.debug("Received supported docker event %s", str(event))
             slot(event)
 
 
@@ -97,9 +103,9 @@ def main():
             "INFO": logging.INFO,
             "WARNING": logging.WARNING
         }[LOGGING_LEVEL])
-    logging.info("Connecting to docker host {}".format(DOCKER_HOST))
-    global docker_client
-    docker_client = docker.from_env()
+    logging.info("Connecting to docker host %s", DOCKER_HOST)
+    global DOCKER_CLIENT  # pylint: disable=global-statement
+    DOCKER_CLIENT = docker.from_env()
     docker_listen()
 
 
@@ -120,7 +126,9 @@ def on_container_create(event):
 
 @docker_event_slot("volume", "create")
 def on_volume_create(event):
-    volume = docker_client.volumes.get(event.get("Actor").get("ID"))
+    """Slot called when a volume is created.
+    """
+    volume = DOCKER_CLIENT.volumes.get(event.get("Actor").get("ID"))
     labels = volume.attrs.get("Labels")
     if labels is None:
         labels = {}
@@ -144,7 +152,7 @@ def on_volume_mount(event):
     """
     volume_id = event["Actor"]["ID"]
     container_id = event["Actor"]["Attributes"]["container"]
-    container_acl = portainer_acls.get(container_id, {})
+    container_acl = PORTAINER_ACLS.get(container_id, {})
     container_public = container_acl.get("io.portainer.uac.public", False)
     container_teams = container_acl.get("io.portainer.uac.teams", [])
     container_users = container_acl.get("io.portainer.uac.users", [])
@@ -157,7 +165,7 @@ def on_volume_mount(event):
 
 
 @static_var("token", None)
-def portainer_request(method, url, json={}):
+def portainer_request(method, url, json=None):
     """Issues an API request to the portainer endpoint.
 
     (Re)authenticates if necessary. This is just a convenient wrapper.
@@ -176,16 +184,15 @@ def portainer_request(method, url, json={}):
         requests.HTTPError: If an error occured.
     """
     if portainer_request.token is None:
-        logging.info("Authenticating to portainer api {}"
-                     .format(PORTAINER_API_URL))
+        logging.info("Authenticating to portainer api %s", PORTAINER_API_URL)
         auth_r = requests.post(PORTAINER_API_URL + "/auth", json={
             "Password": PORTAINER_API_PASSWORD,
             "Username": PORTAINER_API_USERNAME
         })
         auth_r.raise_for_status()
         portainer_request.token = auth_r.json()["jwt"]
-    logging.debug(PORTAINER_API_URL + url + " " + method + ": " + str(json))
-    f = {
+    logging.debug("%s %s %s: %s", PORTAINER_API_URL, url, method, str(json))
+    method = {
         "DELETE": requests.delete,
         "GET": requests.get,
         "POST": requests.post,
@@ -194,9 +201,13 @@ def portainer_request(method, url, json={}):
     authorization_header = {
         "Authorization": "Bearer " + portainer_request.token
     } if portainer_request.token is not None else None
-    r = f(PORTAINER_API_URL + url, json=json, headers=authorization_header)
-    r.raise_for_status()
-    return r.json()
+    response = method(
+        PORTAINER_API_URL + url,
+        json=json,
+        headers=authorization_header
+    )
+    response.raise_for_status()
+    return response.json()
 
 
 def portainer_update_acl(**kwargs):
@@ -220,13 +231,13 @@ def portainer_update_acl(**kwargs):
         users (str / Table[int]): Raw or formatted value of label
                                   io.portainer.uac.users.
     """
-    global portainer_acls
+    global PORTAINER_ACLS  # pylint: disable=global-statement
 
     def bool_or_str_to_bool(val):
-        return val if type(val) is bool else (str(val).lower() == "true")
+        return val if isinstance(val, bool) else (str(val).lower() == "true")
 
     def idlist_or_str_to_idlist(val, str_to_id_func):
-        return val if type(val) is list else \
+        return val if isinstance(val, list) else \
             [] if val in [None, ""] else \
             [str_to_id_func(x.strip()) for x in str(val).split(',')]
 
@@ -241,21 +252,21 @@ def portainer_update_acl(**kwargs):
     users = idlist_or_str_to_idlist(kwargs.get("users"), user_id)
 
     # Check for trivial acl
-    if not public and len(subresource_ids) == 0 and len(teams) == 0 \
-       and len(users) == 0:
-        logging.warning(f'ACL for resource {resource_id} is empty, skipping')
+    if not public and not subresource_ids and not teams and not users:
+        logging.warning("ACL for resource %s is empty, skipping", resource_id)
         return
     else:
         logging.debug(
-            f'Updating ACL of resource {resource_id} ({resource_type}):'
-            f'io.portainer.uac.public |= {public}, '
-            f'subresource_ids += {subresource_ids}, '
-            f'io.portainer.uac.teams += {teams}, '
-            f'io.portainer.uac.users += {users}'
+            "Updating ACL of resource %s (%s):"
+            "io.portainer.uac.public |= %s, "
+            "subresource_ids += %s, "
+            "io.portainer.uac.teams += %s, "
+            "io.portainer.uac.users += %s",
+            resource_id, resource_type, public, subresource_ids, teams, users
         )
 
     # Fetch existing data and compute the new acl
-    acl = portainer_acls.get(resource_id, {})
+    acl = PORTAINER_ACLS.get(resource_id, {})
     resource_control_id = acl.get("resource_control_id", None)
     acl_exists = (resource_control_id is not None)
     new_public = (acl.get("io.portainer.uac.public", False) or public)
@@ -280,21 +291,22 @@ def portainer_update_acl(**kwargs):
         "Users": new_users
     }
     try:
-        r = portainer_request(request_method,
-                              "/resource_controls" + request_path,
-                              request_data)
-        portainer_acls[resource_id] = {
+        response = portainer_request(
+            request_method,
+            "/resource_controls" + request_path,
+            request_data)
+        PORTAINER_ACLS[resource_id] = {
             "io.portainer.uac.public": new_public,
             "io.portainer.uac.teams": new_teams,
             "io.portainer.uac.users": new_users,
-            "resource_control_id": r["Id"],
+            "resource_control_id": response["Id"],
             "subresource_ids": new_subresource_ids
         }
         logging.info(
-            f'Updated ACL for resource {resource_id} ({resource_type}).')
-    except requests.HTTPError as e:
-        logging.error(
-            f'Could not update ACL of {resource_id}: {str(e)}')
+            "Updated ACL for resource %s (%s).", resource_id, resource_type
+        )
+    except requests.HTTPError as err:
+        logging.error("Could not update ACL of %s: %s", resource_id, str(err))
 
 
 @static_var("teams", {})
