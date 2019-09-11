@@ -1,6 +1,6 @@
 #!/bin/sh
 
-PORTAINER_API=http://localhost:9000/api
+PORTAINER_API=http://localhost:9001/api
 
 echo "Connecting to $PORTAINER_API"
 

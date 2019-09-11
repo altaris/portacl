@@ -5,7 +5,7 @@ ADMIN_PASSWORD='$2y$05$cS8SdlD8BHTdGFxd1IouVe8MRl3y7x/jAOpPvaTn.1KLEC7QpEqca'
 echo "Starting portainer"
 sudo docker run --detach                                \
     --name portacl-test-portainer						\
-    --publish 9000:9000									\
+    --publish 9001:9000									\
     --volume /var/run/docker.sock:/var/run/docker.sock	\
     portainer/portainer --admin-password="$ADMIN_PASSWORD"
 

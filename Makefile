@@ -4,7 +4,7 @@ SUDO 			?= sudo
 
 LOGGING_LEVEL			?= DEBUG
 PORTAINER_API_PASSWORD	?= password
-PORTAINER_API_URL		?= http://localhost:9000/api
+PORTAINER_API_URL		?= http://localhost:9001/api
 PORTAINER_API_USERNAME	?= admin
 
 all: build
@@ -27,7 +27,7 @@ run-docker: build
 	$(SUDO) docker run --rm										\
 		--env "LOGGING_LEVEL=DEBUG"								\
 		--env "PORTAINER_API_PASSWORD=password"					\
-		--env "PORTAINER_API_URL=http://localhost:9000/api"		\
+		--env "PORTAINER_API_URL=http://localhost:9001/api"		\
 		--env "PORTAINER_API_USERNAME=admin"					\
 		--name portacl-test										\
 		--network host											\
