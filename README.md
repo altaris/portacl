@@ -1,6 +1,10 @@
 portacl
 =======
 
+**With the resolution of portainer's issue
+[#3337](https://github.com/portainer/portainer/pull/3337), this project is
+deprecated.**
+
 [![Docker Build Status](https://img.shields.io/docker/cloud/build/altaris/portacl)](https://hub.docker.com/r/altaris/portacl/)
 [![Maintainability](https://api.codeclimate.com/v1/badges/34e440aee948a0bc7b21/maintainability)](https://codeclimate.com/github/altaris/portacl/maintainability)
 ![Python 3](https://badgen.net/badge/Python/3/blue)
