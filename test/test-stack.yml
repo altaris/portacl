@@ -4,20 +4,28 @@ networks:
   network_public:
     name: "network_public"
     labels:
-      - "io.portainer.uac.public=true"
+      - "io.portainer.accesscontrol.public=true"
+  network_qa:
+    name: "network_qa"
+    labels:
+      - "io.portainer.accesscontrol.teams=qa"
 
 volumes:
   volume_public:
     labels:
-      - "io.portainer.uac.public=true"
+      - "io.portainer.accesscontrol.public=true"
     name: "volume_public"
   volume_carol_daniel:
-    name: "volume_carol_daniel"
     labels:
-      - "io.portainer.uac.users=carol,daniel"
+      - "io.portainer.accesscontrol.users=carol,daniel"
+    name: "volume_carol_daniel"
   volume_qa:
+    labels:
+      - "io.portainer.accesscontrol.teams=qa"
     name: "volume_qa"
   volume_bob_carol:
+    labels:
+      - "io.portainer.accesscontrol.users=bob,carol"
     name: "volume_bob_carol"
 
 services:
@@ -26,19 +34,23 @@ services:
     container_name: "container_public"
     image: alpine
     labels:
-      - "io.portainer.uac.public=true"
+      - "io.portainer.accesscontrol.public=true"
+    networks:
+      - network_public
+    volumes:
+      - volume_public
   container_admin:
     command: sleep 3600
     container_name: "container_admin"
     image: alpine
     labels:
-      - "io.portainer.uac.users=admin"
+      - "io.portainer.accesscontrol.users=admin"
   container_bob:
       command: sleep 3600
       container_name: "container_bob"
       image: alpine
       labels:
-        - "io.portainer.uac.users=bob"
+        - "io.portainer.accesscontrol.users=bob"
       volumes:
         - volume_bob_carol:/data
   container_carol:
@@ -46,7 +58,7 @@ services:
       container_name: "container_carol"
       image: alpine
       labels:
-        - "io.portainer.uac.users=carol"
+        - "io.portainer.accesscontrol.users=carol"
       volumes:
         - volume_bob_carol:/data
   container_carol_daniel:
@@ -54,7 +66,7 @@ services:
     container_name: "container_carol_daniel"
     image: alpine
     labels:
-      - "io.portainer.uac.users=carol,daniel"
+      - "io.portainer.accesscontrol.users=carol,daniel"
     volumes:
       - volume_carol_daniel:/data
   container_qa:
@@ -62,7 +74,9 @@ services:
     container_name: "container_qa"
     image: alpine
     labels:
-      - "io.portainer.uac.teams=qa"
+      - "io.portainer.accesscontrol.teams=qa"
+    networks:
+      - network_qa
     volumes:
       - volume_qa:/data
   container_development_qa:
@@ -70,11 +84,11 @@ services:
     container_name: "container_development_qa"
     image: alpine
     labels:
-      - "io.portainer.uac.teams=development,qa"
+      - "io.portainer.accesscontrol.teams=development,qa"
   container_qa_bob:
     command: sleep 3600
     container_name: "container_qa_bob"
     image: alpine
     labels:
-      - "io.portainer.uac.teams=qa"
-      - "io.portainer.uac.users=bob"
+      - "io.portainer.accesscontrol.teams=qa"
+      - "io.portainer.accesscontrol.users=bob"
